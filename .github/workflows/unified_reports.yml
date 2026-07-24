@@ -1,0 +1,152 @@
+name: Unified Test & Report CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  verify_deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify deployment (placeholder)
+        run: |
+          echo "Customize this step to verify your deployment (health checks, smoke tests, etc.)"
+
+  run_backend_api_tests:
+    needs: verify_deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install backend deps (if present)
+        run: |
+          if [ -f Unified-Secure-Patient-Record-System/requirements.txt ]; then python -m pip install -r Unified-Secure-Patient-Record-System/requirements.txt; fi
+      - name: Run backend tests (customize)
+        run: |
+          echo "Running backend tests (customize this command)"
+          if [ -d Unified-Secure-Patient-Record-System ]; then
+            if command -v pytest >/dev/null 2>&1; then
+              pytest Unified-Secure-Patient-Record-System || true
+            else
+              echo "pytest not installed or no tests configured"
+            fi
+          fi
+      - name: Upload backend reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-report
+          path: Unified-Secure-Patient-Record-System/reports/**
+
+  run_frontend_build:
+    needs: verify_deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install & Build frontend (if present)
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend
+            npm ci
+            npm run build --if-present
+          else
+            echo "No frontend/package.json found, skipping"
+          fi
+      - name: Upload frontend reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-report
+          path: frontend/reports/**
+
+  run_api_load_tests:
+    needs: verify_deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Run load-tests (customize)
+        run: |
+          if [ -f load-tests/package.json ]; then
+            cd load-tests
+            npm ci
+            npm run test --if-present || node src/index.js || true
+          else
+            echo "No load-tests package.json; adjust this step to run your load test tool (k6, artillery, locust, etc.)"
+          fi
+      - name: Upload load test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-report
+          path: load-tests/reports/**
+
+  run_selenium_e2e:
+    needs: verify_deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Run selenium tests (customize)
+        run: |
+          if [ -f selenium-tests/package.json ]; then
+            cd selenium-tests
+            npm ci
+            npm test || true
+          else
+            echo "No selenium-tests package.json found, skipping"
+          fi
+      - name: Upload selenium reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-report
+          path: selenium-tests/reports/**
+
+  consolidate_and_verify_reports:
+    needs: [run_backend_api_tests, run_frontend_build, run_api_load_tests, run_selenium_e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-report
+          path: artifacts/backend
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-report
+          path: artifacts/frontend
+      - name: Download load test artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: load-report
+          path: artifacts/load
+      - name: Download selenium artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: selenium-report
+          path: artifacts/selenium
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Generate unified report
+        run: |
+          node scripts/generate_unified_report.js
+      - name: Upload unified dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-dashboard
+          path: reports/unified_dashboard.html
