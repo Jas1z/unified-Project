@@ -4,8 +4,8 @@
   "total": 400,
   "passed": 400,
   "failed": 0,
-  "durationSeconds": 922.1,
-  "reportFile": "comprehensive-400-test-report-2026-07-24-11-06-01.xlsx",
+  "durationSeconds": 931.7,
+  "reportFile": "comprehensive-400-test-report-2026-07-24-09-57-49.xlsx",
   "categories": [
     {
       "name": "Authentication & Security",

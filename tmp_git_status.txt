@@ -1,0 +1,5 @@
+﻿ M appium-tests/package-lock.json
+?? Unified-Secure-Patient-Record-System/reports/
+?? artifacts/
+?? reports/
+?? tmp_git_status.txt

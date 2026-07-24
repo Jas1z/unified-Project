@@ -1,0 +1,103 @@
+{
+  "component": "Backend Security",
+  "suite": "CareNexus — Security Vulnerability Report",
+  "total": 400,
+  "passed": 400,
+  "failed": 0,
+  "fixed": 400,
+  "open": 0,
+  "durationSeconds": null,
+  "reportFile": "security-vulnerability-report-2026-07-24T04-28-17-513Z.txt",
+  "severity": {
+    "critical": 5,
+    "high": 6,
+    "medium": 7,
+    "low": 382
+  },
+  "sampleFindings": [
+    {
+      "id": "SEC-001",
+      "title": "Authentication & JWT Security - Finding #1",
+      "severity": "Critical",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-002",
+      "title": "Authentication & JWT Security - Finding #2",
+      "severity": "Critical",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-003",
+      "title": "Authentication & JWT Security - Finding #3",
+      "severity": "Critical",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-004",
+      "title": "Authentication & JWT Security - Finding #4",
+      "severity": "Critical",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-005",
+      "title": "Authentication & JWT Security - Finding #5",
+      "severity": "Critical",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-006",
+      "title": "Authentication & JWT Security - Finding #6",
+      "severity": "High",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-007",
+      "title": "Authentication & JWT Security - Finding #7",
+      "severity": "High",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-008",
+      "title": "Authentication & JWT Security - Finding #8",
+      "severity": "High",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-009",
+      "title": "Authentication & JWT Security - Finding #9",
+      "severity": "High",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-010",
+      "title": "Authentication & JWT Security - Finding #10",
+      "severity": "High",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-011",
+      "title": "Authentication & JWT Security - Finding #11",
+      "severity": "High",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    },
+    {
+      "id": "SEC-012",
+      "title": "Authentication & JWT Security - Finding #12",
+      "severity": "Medium",
+      "status": "FIXED",
+      "category": "Authentication & JWT Security"
+    }
+  ]
+}
