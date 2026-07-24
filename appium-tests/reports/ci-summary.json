@@ -2,10 +2,10 @@
   "component": "Mobile E2E",
   "suite": "CareNexus Mobile - Full Appium E2E Automation",
   "total": 400,
-  "passed": 400,
-  "failed": 0,
-  "durationSeconds": 931.7,
-  "reportFile": "comprehensive-400-test-report-2026-07-24-09-57-49.xlsx",
+  "passed": 388,
+  "failed": 12,
+  "durationSeconds": 929.9,
+  "reportFile": "comprehensive-400-test-report-2026-07-24-10-09-36.xlsx",
   "categories": [
     {
       "name": "Authentication & Security",
