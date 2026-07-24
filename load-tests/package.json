@@ -1,0 +1,15 @@
+{
+  "name": "ehr-load-tests",
+  "version": "1.0.0",
+  "description": "Load and Performance testing for EHR Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node src/index.js"
+  },
+  "dependencies": {
+    "autocannon": "^7.12.0",
+    "exceljs": "^4.4.0",
+    "moment": "^2.29.4",
+    "chalk": "^4.1.2"
+  }
+}
