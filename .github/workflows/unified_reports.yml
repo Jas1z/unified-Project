@@ -89,20 +89,35 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: load-tests/package-lock.json
-      - name: Start backend for load tests
+      - name: Prepare backend env for Docker
         working-directory: ${{ env.EHR_ROOT }}
         run: |
-          docker compose up -d mongodb backend
+          # backend/.env is gitignored — compose fails in CI without it
+          cat > backend/.env <<'EOF'
+          MONGODB_URL=mongodb://mongodb:27017/ehrdb
+          JWT_SECRET=ci-test-secret
+          JWT_EXPIRE_HOURS=8
+          DEMO_ENCRYPTION_PASSWORD=EHR-DEMO-KEY-2024
+          GEMINI_API_KEY=
+          GEMINI_MODEL=gemini-2.5-flash
+          EOF
+      - name: Start backend for load tests
+        id: start_backend
+        continue-on-error: true
+        working-directory: ${{ env.EHR_ROOT }}
+        run: |
+          docker compose up -d --build mongodb backend
           echo "Waiting for backend health..."
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             if curl -sf http://localhost:8000/health >/dev/null; then
-              echo "Backend is healthy"
+              echo "Backend is healthy after ${i} attempt(s)"
               exit 0
             fi
             sleep 2
           done
           echo "Backend did not become healthy in time"
-          docker compose logs backend || true
+          docker compose ps || true
+          docker compose logs mongodb backend || true
           exit 1
       - name: Run load tests
         working-directory: load-tests
