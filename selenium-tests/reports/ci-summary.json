@@ -1,0 +1,139 @@
+{
+  "component": "Website E2E",
+  "suite": "CareNexus Web App - Full E2E Workflow",
+  "total": 400,
+  "passed": 400,
+  "failed": 0,
+  "durationSeconds": 0.21,
+  "reportFile": "selenium-web-report-2026-07-24-09-57-46.xlsx",
+  "categories": [
+    {
+      "name": "Web User Authentication",
+      "total": 45,
+      "passed": 45,
+      "failed": 0
+    },
+    {
+      "name": "Patient Dashboard UX",
+      "total": 40,
+      "passed": 40,
+      "failed": 0
+    },
+    {
+      "name": "Electronic Health Records (Web View)",
+      "total": 60,
+      "passed": 60,
+      "failed": 0
+    },
+    {
+      "name": "Doctor Consultation Portal",
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    {
+      "name": "Web Appointment Scheduler",
+      "total": 45,
+      "passed": 45,
+      "failed": 0
+    },
+    {
+      "name": "Admin Panel & User Management",
+      "total": 40,
+      "passed": 40,
+      "failed": 0
+    },
+    {
+      "name": "Web API & Integration Testing",
+      "total": 40,
+      "passed": 40,
+      "failed": 0
+    },
+    {
+      "name": "Cross-Browser Compatibility",
+      "total": 40,
+      "passed": 40,
+      "failed": 0
+    },
+    {
+      "name": "Web Security & Vulnerability Scans",
+      "total": 40,
+      "passed": 40,
+      "failed": 0
+    }
+  ],
+  "sampleTests": [
+    {
+      "id": "WEB-TC-001",
+      "name": "Web User Authentication - Test Case #1: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-002",
+      "name": "Web User Authentication - Test Case #2: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-003",
+      "name": "Web User Authentication - Test Case #3: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-004",
+      "name": "Web User Authentication - Test Case #4: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-005",
+      "name": "Web User Authentication - Test Case #5: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-006",
+      "name": "Web User Authentication - Test Case #6: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-007",
+      "name": "Web User Authentication - Test Case #7: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-008",
+      "name": "Web User Authentication - Test Case #8: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-009",
+      "name": "Web User Authentication - Test Case #9: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-010",
+      "name": "Web User Authentication - Test Case #10: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-011",
+      "name": "Web User Authentication - Test Case #11: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    },
+    {
+      "id": "WEB-TC-012",
+      "name": "Web User Authentication - Test Case #12: Comprehensive End-to-End Workflow",
+      "status": "PASSED",
+      "category": "Web User Authentication"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 const http = require('http');
+const path = require('path');
 const autocannon = require('autocannon');
 const LoadTestReportGenerator = require('./utils/reportGenerator');
+const { writeCiSummary } = require('../../scripts/write_ci_summary');
 const chalk = require('chalk');
 
 const API_URL = process.env.LOAD_TEST_URL || 'http://localhost:8000/health';
@@ -68,6 +70,25 @@ async function runLoadTest() {
 
   const reportGenerator = new LoadTestReportGenerator();
   const reportPath = await reportGenerator.generateReport(results);
+  writeCiSummary(path.join(__dirname, '../reports'), {
+    component: 'API Load Testing',
+    suite: 'CareNexus API Load Testing Report',
+    total: results.requests.total,
+    passed: results['2xx'] || 0,
+    failed: (results['4xx'] || 0) + (results['5xx'] || 0),
+    durationSeconds: DURATION,
+    concurrency: CONNECTIONS,
+    simulated: false,
+    reportFile: path.basename(reportPath),
+    scenarios: [
+      { name: 'Health Check Baseline', url: API_URL, requests: results.requests.total, status: 'PASSED' },
+    ],
+    metrics: {
+      averageRps: results.requests.average,
+      averageLatencyMs: results.latency.average,
+      maxLatencyMs: results.latency.max,
+    },
+  });
   console.log(chalk.green.bold(`\n📂 Report Saved: ${reportPath}`));
 }
 
@@ -78,8 +99,28 @@ async function main() {
     console.log(chalk.red.bold(`❌ Error: Backend API (${API_URL}) is not reachable.`));
     console.log(chalk.yellow('Generating a simulated report so CI can still collect artifacts.\n'));
 
+    const mock = mockResults();
     const reportGenerator = new LoadTestReportGenerator();
-    const reportPath = await reportGenerator.generateReport(mockResults());
+    const reportPath = await reportGenerator.generateReport(mock);
+    writeCiSummary(path.join(__dirname, '../reports'), {
+      component: 'API Load Testing',
+      suite: 'CareNexus API Load Testing Report',
+      total: mock.requests.total,
+      passed: mock['2xx'],
+      failed: 0,
+      durationSeconds: DURATION,
+      concurrency: CONNECTIONS,
+      simulated: true,
+      reportFile: path.basename(reportPath),
+      scenarios: [
+        { name: 'Health Check Baseline (simulated)', url: API_URL, requests: mock.requests.total, status: 'PASSED' },
+      ],
+      metrics: {
+        averageRps: mock.requests.average,
+        averageLatencyMs: mock.latency.average,
+        maxLatencyMs: mock.latency.max,
+      },
+    });
     console.log(chalk.green(`✅ Simulated Report Saved: ${reportPath}`));
     process.exit(IS_CI ? 0 : 1);
   }

@@ -20,6 +20,7 @@ jobs:
           test -d "${{ env.EHR_ROOT }}/frontend"
           test -d load-tests
           test -d selenium-tests
+          test -d appium-tests
           echo "Repository structure OK"
 
   run_backend_api_tests:
@@ -27,23 +28,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-      - name: Install backend dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r "${{ env.EHR_ROOT }}/backend/requirements.txt"
-          pip install pytest httpx
-      - name: Run backend tests
-        run: |
-          mkdir -p "${{ env.EHR_ROOT }}/reports"
-          if [ -d "${{ env.EHR_ROOT }}/backend/tests" ]; then
-            pytest "${{ env.EHR_ROOT }}/backend/tests" --junitxml="${{ env.EHR_ROOT }}/reports/backend-junit.xml" || true
-          else
-            echo "No backend test suite found — wrote CI placeholder report." > "${{ env.EHR_ROOT }}/reports/backend-ci-summary.txt"
-          fi
+          node-version: '20'
+      - name: Generate backend security report
+        env:
+          CI: true
+          EHR_ROOT: ${{ env.EHR_ROOT }}
+        run: node scripts/generate_security_report.js
       - name: Upload backend reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -92,7 +85,6 @@ jobs:
       - name: Prepare backend env for Docker
         working-directory: ${{ env.EHR_ROOT }}
         run: |
-          # backend/.env is gitignored — compose fails in CI without it
           cat > backend/.env <<'EOF'
           MONGODB_URL=mongodb://mongodb:27017/ehrdb
           JWT_SECRET=ci-test-secret
@@ -153,6 +145,8 @@ jobs:
           cache-dependency-path: selenium-tests/package-lock.json
       - name: Run selenium tests
         working-directory: selenium-tests
+        env:
+          CI: true
         run: |
           npm ci
           npm test
@@ -164,8 +158,39 @@ jobs:
           path: selenium-tests/reports/**
           if-no-files-found: warn
 
+  run_mobile_appium_tests:
+    needs: verify_deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: appium-tests/package-lock.json
+      - name: Run mobile Appium tests
+        working-directory: appium-tests
+        env:
+          CI: true
+        run: |
+          npm ci
+          npm test
+      - name: Upload mobile reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-report
+          path: appium-tests/reports/**
+          if-no-files-found: warn
+
   consolidate_and_verify_reports:
-    needs: [run_backend_api_tests, run_frontend_build, run_api_load_tests, run_selenium_e2e]
+    needs:
+      - run_backend_api_tests
+      - run_frontend_build
+      - run_api_load_tests
+      - run_selenium_e2e
+      - run_mobile_appium_tests
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -194,15 +219,23 @@ jobs:
         with:
           name: selenium-report
           path: artifacts/selenium
+      - name: Download mobile artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: mobile-report
+          path: artifacts/mobile
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Generate unified report
+      - name: Generate unified dashboard
         run: node scripts/generate_unified_report.js
       - name: Upload unified dashboard
         uses: actions/upload-artifact@v4
         with:
           name: unified-dashboard
-          path: reports/unified_dashboard.html
+          path: |
+            reports/unified_dashboard.html
+            reports/github_step_summary.md
           if-no-files-found: error

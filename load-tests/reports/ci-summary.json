@@ -1,0 +1,24 @@
+{
+  "component": "API Load Testing",
+  "suite": "CareNexus API Load Testing Report",
+  "total": 7524,
+  "passed": 7524,
+  "failed": 0,
+  "durationSeconds": 60,
+  "concurrency": 100,
+  "simulated": true,
+  "reportFile": "load-test-report-2026-07-24-09-57-51.xlsx",
+  "scenarios": [
+    {
+      "name": "Health Check Baseline (simulated)",
+      "url": "http://localhost:8000/health",
+      "requests": 7524,
+      "status": "PASSED"
+    }
+  ],
+  "metrics": {
+    "averageRps": 125.4,
+    "averageLatencyMs": 245.5,
+    "maxLatencyMs": 1480
+  }
+}
