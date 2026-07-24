@@ -26,18 +26,50 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import EmailStr
 
 from config import settings
-from crypto.hashing import verify_password
+from crypto.ecdh import generate_keypair
+from crypto.hashing import hash_password, verify_password
 from database import REVOCATION_LIST, USERS, get_database
 from dependencies import get_current_user, get_simulated_ip
 from models.audit import AuditAction, AuditResourceType
-from models.user import TokenResponse, UserInDB, UserResponse
+from models.user import TokenResponse, UserCreate, UserInDB, UserResponse
 from utils.audit_writer import write_audit_log
 
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+def build_token_response(user: UserInDB) -> TokenResponse:
+    """Issue a JWT and wrap it in the standard auth payload."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expire_hours)
+    payload = {
+        "sub":         user.id,
+        "email":       user.email,
+        "role":        user.role.value,
+        "hospital_id": user.hospitalId,
+        "attributes":  user.attributes,
+        "exp":         expire,
+    }
+    token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            role=user.role,
+            hospitalId=user.hospitalId,
+            department=user.department,
+            attributes=user.attributes,
+            publicKey=user.publicKey,
+            createdAt=user.createdAt,
+            isRevoked=user.isRevoked,
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -71,8 +103,10 @@ async def login(
       5. Write LOGIN audit entry
       6. Return TokenResponse
     """
+    normalized_username = form_data.username.strip().lower()
+
     # 1. Find user by email
-    user_doc = await db[USERS].find_one({"email": form_data.username})
+    user_doc = await db[USERS].find_one({"email": normalized_username})
     if not user_doc:
         # Deliberately vague error — don't reveal whether the email exists
         raise HTTPException(
@@ -98,17 +132,8 @@ async def login(
             detail="Access denied — credentials not recognised",
         )
 
-    # 4. Build JWT payload
-    expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expire_hours)
-    payload = {
-        "sub":         user.id,
-        "email":       user.email,
-        "role":        user.role.value,
-        "hospital_id": user.hospitalId,
-        "attributes":  user.attributes,
-        "exp":         expire,
-    }
-    token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    # 4. Build JWT payload and return it
+    response = build_token_response(user)
 
     # 5. Write audit log
     ip = get_simulated_ip()
@@ -123,23 +148,68 @@ async def login(
         details=f"User '{user.name}' ({user.role.value}) logged in",
     )
 
-    # 6. Return token + safe user representation
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserResponse(
-            id=user.id,
-            name=user.name,
-            email=user.email,
-            role=user.role,
-            hospitalId=user.hospitalId,
-            department=user.department,
-            attributes=user.attributes,
-            publicKey=user.publicKey,
-            createdAt=user.createdAt,
-            isRevoked=user.isRevoked,
-        ),
+    return response
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/register
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new account and sign in",
+    responses={
+        409: {"description": "Email already registered"},
+    },
+)
+async def register(
+    body: UserCreate,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> TokenResponse:
+    """Create a new account for a clinic, clinician, or patient."""
+    email = body.email.lower()
+    existing = await db[USERS].find_one({"email": email})
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with that email already exists.",
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    user_id = str(uuid.uuid4())
+    keys = generate_keypair()
+
+    user = UserInDB(
+        id=user_id,
+        name=body.name,
+        email=email,
+        passwordHash=hash_password(body.password),
+        role=body.role,
+        hospitalId=body.hospitalId,
+        department=body.department,
+        attributes=body.attributes,
+        publicKey=keys["publicKey"],
+        privateKey=keys["privateKey"],
+        createdAt=now,
+        isRevoked=False,
     )
+
+    await db[USERS].insert_one(user.model_dump())
+
+    await write_audit_log(
+        db=db,
+        user=user,
+        action=AuditAction.CREATE,
+        resource_type=AuditResourceType.user,
+        resource_id=user_id,
+        hospital_id=user.hospitalId,
+        ip_address=get_simulated_ip(),
+        details=f"Created account for '{body.name}'",
+    )
+
+    return build_token_response(user)
 
 
 # ---------------------------------------------------------------------------

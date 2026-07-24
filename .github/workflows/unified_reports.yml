@@ -2,16 +2,25 @@ name: Unified Test & Report CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  EHR_ROOT: Unified-Secure-Patient-Record-System
 
 jobs:
   verify_deployment:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify deployment (placeholder)
+      - name: Verify repository layout
         run: |
-          echo "Customize this step to verify your deployment (health checks, smoke tests, etc.)"
+          test -d "${{ env.EHR_ROOT }}/backend"
+          test -d "${{ env.EHR_ROOT }}/frontend"
+          test -d load-tests
+          test -d selenium-tests
+          echo "Repository structure OK"
 
   run_backend_api_tests:
     needs: verify_deployment
@@ -19,27 +28,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
-      - name: Install backend deps (if present)
+          python-version: '3.11'
+      - name: Install backend dependencies
         run: |
-          if [ -f Unified-Secure-Patient-Record-System/requirements.txt ]; then python -m pip install -r Unified-Secure-Patient-Record-System/requirements.txt; fi
-      - name: Run backend tests (customize)
+          python -m pip install --upgrade pip
+          pip install -r "${{ env.EHR_ROOT }}/backend/requirements.txt"
+          pip install pytest httpx
+      - name: Run backend tests
         run: |
-          echo "Running backend tests (customize this command)"
-          if [ -d Unified-Secure-Patient-Record-System ]; then
-            if command -v pytest >/dev/null 2>&1; then
-              pytest Unified-Secure-Patient-Record-System || true
-            else
-              echo "pytest not installed or no tests configured"
-            fi
+          mkdir -p "${{ env.EHR_ROOT }}/reports"
+          if [ -d "${{ env.EHR_ROOT }}/backend/tests" ]; then
+            pytest "${{ env.EHR_ROOT }}/backend/tests" --junitxml="${{ env.EHR_ROOT }}/reports/backend-junit.xml" || true
+          else
+            echo "No backend test suite found — wrote CI placeholder report." > "${{ env.EHR_ROOT }}/reports/backend-ci-summary.txt"
           fi
       - name: Upload backend reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: backend-report
-          path: Unified-Secure-Patient-Record-System/reports/**
+          path: ${{ env.EHR_ROOT }}/reports/**
+          if-no-files-found: warn
 
   run_frontend_build:
     needs: verify_deployment
@@ -49,21 +60,23 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install & Build frontend (if present)
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ${{ env.EHR_ROOT }}/frontend/package-lock.json
+      - name: Install and build frontend
+        working-directory: ${{ env.EHR_ROOT }}/frontend
         run: |
-          if [ -f frontend/package.json ]; then
-            cd frontend
-            npm ci
-            npm run build --if-present
-          else
-            echo "No frontend/package.json found, skipping"
-          fi
+          npm ci
+          npm run build
+          mkdir -p reports
+          echo "Frontend build succeeded on $(date -u +%Y-%m-%dT%H:%M:%SZ)" > reports/frontend-build-summary.txt
       - name: Upload frontend reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: frontend-report
-          path: frontend/reports/**
+          path: ${{ env.EHR_ROOT }}/frontend/reports/**
+          if-no-files-found: warn
 
   run_api_load_tests:
     needs: verify_deployment
@@ -73,21 +86,44 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Run load-tests (customize)
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: load-tests/package-lock.json
+      - name: Start backend for load tests
+        working-directory: ${{ env.EHR_ROOT }}
         run: |
-          if [ -f load-tests/package.json ]; then
-            cd load-tests
-            npm ci
-            npm run test --if-present || node src/index.js || true
-          else
-            echo "No load-tests package.json; adjust this step to run your load test tool (k6, artillery, locust, etc.)"
-          fi
+          docker compose up -d mongodb backend
+          echo "Waiting for backend health..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health >/dev/null; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become healthy in time"
+          docker compose logs backend || true
+          exit 1
+      - name: Run load tests
+        working-directory: load-tests
+        env:
+          CI: true
+          LOAD_TEST_DURATION: 15
+          LOAD_TEST_CONNECTIONS: 50
+        run: |
+          npm ci
+          npm test
+      - name: Stop backend stack
+        if: always()
+        working-directory: ${{ env.EHR_ROOT }}
+        run: docker compose down -v
       - name: Upload load test reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: load-report
           path: load-tests/reports/**
+          if-no-files-found: warn
 
   run_selenium_e2e:
     needs: verify_deployment
@@ -97,56 +133,61 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Run selenium tests (customize)
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: selenium-tests/package-lock.json
+      - name: Run selenium tests
+        working-directory: selenium-tests
         run: |
-          if [ -f selenium-tests/package.json ]; then
-            cd selenium-tests
-            npm ci
-            npm test || true
-          else
-            echo "No selenium-tests package.json found, skipping"
-          fi
+          npm ci
+          npm test
       - name: Upload selenium reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: selenium-report
           path: selenium-tests/reports/**
+          if-no-files-found: warn
 
   consolidate_and_verify_reports:
     needs: [run_backend_api_tests, run_frontend_build, run_api_load_tests, run_selenium_e2e]
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - uses: actions/checkout@v4
       - name: Download backend artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: backend-report
           path: artifacts/backend
       - name: Download frontend artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: frontend-report
           path: artifacts/frontend
       - name: Download load test artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: load-report
           path: artifacts/load
       - name: Download selenium artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: selenium-report
           path: artifacts/selenium
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       - name: Generate unified report
-        run: |
-          node scripts/generate_unified_report.js
+        run: node scripts/generate_unified_report.js
       - name: Upload unified dashboard
         uses: actions/upload-artifact@v4
         with:
           name: unified-dashboard
           path: reports/unified_dashboard.html
+          if-no-files-found: error

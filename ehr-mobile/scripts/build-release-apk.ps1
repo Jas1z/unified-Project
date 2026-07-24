@@ -13,11 +13,24 @@ Set-Location $root
 if ($LanIp) {
     @"
 EXPO_PUBLIC_WEB_APP_URL=http://${LanIp}:5173
-"@ | Set-Content -Path ".env" -Encoding utf8NoBOM
+"@ | Set-Content -Path ".env" -Encoding UTF8
     Write-Host "Wrote .env with LAN IP $LanIp"
 } elseif (-not (Test-Path ".env")) {
     Write-Warning "No .env found. Create .env with EXPO_PUBLIC_WEB_APP_URL=http://YOUR_IP:5173"
 }
+
+# Expo inlines EXPO_PUBLIC_* and app.config.js extra at bundle time — must be set before Gradle.
+if (Test-Path ".env") {
+    Get-Content ".env" | ForEach-Object {
+        if ($_ -match '^\s*EXPO_PUBLIC_WEB_APP_URL\s*=\s*(.+)\s*$') {
+            $env:EXPO_PUBLIC_WEB_APP_URL = $Matches[1].Trim()
+        }
+    }
+}
+if (-not $env:EXPO_PUBLIC_WEB_APP_URL) {
+    throw "EXPO_PUBLIC_WEB_APP_URL is not set. Add it to .env or pass -LanIp YOUR_WIFI_IP"
+}
+Write-Host "Building with EXPO_PUBLIC_WEB_APP_URL=$($env:EXPO_PUBLIC_WEB_APP_URL)"
 
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
@@ -27,7 +40,7 @@ if (-not (Test-Path $env:ANDROID_HOME)) {
 
 Write-Host "Building release APK (arm64 + armeabi for phones)..."
 Set-Location android
-& .\gradlew.bat assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+& .\gradlew.bat assembleRelease "-PreactNativeArchitectures=arm64-v8a,armeabi-v7a"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $apk = Get-Item ".\app\build\outputs\apk\release\app-release.apk"

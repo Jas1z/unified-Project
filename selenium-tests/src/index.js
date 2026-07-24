@@ -75,4 +75,7 @@ async function runSeleniumTestSuite() {
   console.log(chalk.blue.bold('╚════════════════════════════════════════════════════════════╝\n'));
 }
 
-runSeleniumTestSuite().catch(err => console.error(err));
+runSeleniumTestSuite().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

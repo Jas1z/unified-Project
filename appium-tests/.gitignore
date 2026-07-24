@@ -1,0 +1,17 @@
+node_modules/
+build/
+dist/
+*.log
+.env
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.iml
+coverage/
+.nyc_output/
+.cache/
+appium.log
+screenshots/
